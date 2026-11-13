@@ -11,8 +11,7 @@ from pathlib import Path
 DATASET = "konsman/physics-corpus"
 CONFIG = "quantum-physics"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-#if we want to include full text add full_text
-COLUMNS = ["paper_id", "arxiv_id", "title", "abstract", "primary_category", "arxiv_categories", "submission_date"] 
+COLUMNS = ["paper_id", "arxiv_id", "title", "abstract", "primary_category", "arxiv_categories", "submission_date", "full_text"]
 
 
 def clean(value):
@@ -95,7 +94,8 @@ def process(rows, output, identity, limit=1000, batch_size=100, category=None):
                                     text=text, text_hash=digest,
                                     primary_category=row.get("primary_category"),
                                     arxiv_categories=categories,
-                                    submission_date=row.get("submission_date"))
+                                    submission_date=row.get("submission_date"),
+                                    full_text=clean(row.get("full_text")))
                     handle.write((json.dumps(document, ensure_ascii=False) + "\n").encode("utf-8"))
                     seen_ids.add(paper_id)
                     seen_hashes.add(digest)
@@ -133,7 +133,7 @@ def main():
         from huggingface_hub import HfApi
         # Resolve main once; persist the exact commit so resume cannot silently mix revisions.
         revision = HfApi().dataset_info(DATASET, revision=args.revision).sha
-        identity = f"{DATASET}:{CONFIG}:train:{revision}:title-abstract-v1"
+        identity = f"{DATASET}:{CONFIG}:train:{revision}:title-abstract-fulltext-v1"
         rows = load_dataset(DATASET, CONFIG, split="train", streaming=True,
                             columns=COLUMNS, revision=revision)
         result = process(iter(rows), output, identity, args.limit, args.batch_size, category)
